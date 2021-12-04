@@ -6,6 +6,3 @@ In my unemployment I've found time to improve upon the original architecture and
 The neural net found here is by no means complete (as one could infer from the comments in the code), but it is currently semi-functional.
 
 I will also add comprehensive documentation when "done"
-
-
-
