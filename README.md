@@ -1,4 +1,4 @@
-# My currect hobby project project: building an improved neural network 
+# Hobby project project: building an improved neural network 
 
 I wrote a neural network as an assignment/ project whilst doing my degree in physics at the University of Oslo. At the time  was inexperienced with OOP, and the whole project was rushed due to lack of time. It's safe to say the result was lacking.
 
