@@ -1,26 +1,23 @@
 import autograd.numpy as np
+from autograd import jacobian 
 from autograd import elementwise_grad as egrad
 
 
-
-class Neuralnet:
+class NeuralNet:
 
     def __init__(self):
         
+        #Lists for holding the weight, bias, etc, matrices/ vectors.
+        #Call them (for the time being) "empty" tensors, if you're so inclined
         self.layers = []
         self.act_funcs = [] 
+        self.d_act_funcs = []
         self.weights = []
         self.biases = []
         self.Z = []
         self.A = []
         self.delta = []
-        self.delta2 = []
-
-    def quit(self):
-        """lol"""
-        return 
-
-    def add(self, n_neurons, act_func, input_size = -1):
+    def add(self, n_neurons, act_func, input_size = None):
         """
         Sequantially adds layer to network in the order (in, hidden_1, ..., hidden_n, out). When adding input layer,
         input size must be specified. 
@@ -33,56 +30,57 @@ class Neuralnet:
             #Should be obvious to anyone attempting to use this class. Still: might catch a typo
             raise TypeError("n_neurons must be of type int and greater than or equal to 1")
 
-        #use -1 as kwarg for input_size, as this is an unlikely value to be added by a user.
-        #Might actually change that/ imporve method later
-        if input_size != -1 and isinstance(input_size, int):
-            self.weights.append(np.random.randn(input_size, n_neurons))
+        if isinstance(input_size, int):
+            self.weights.append(np.random.randn(input_size, n_neurons)*0.01)
             
 
-        elif input_size == -1:
-            self.weights.append(np.random.randn(self.layers[-2], n_neurons))
+        elif isinstance(input_size, type(None)):
+            self.weights.append(np.random.randn(self.layers[-2], n_neurons)*0.01)
         #Errrrr
         else:
             raise TypeError("Errr")
 
         if isinstance(act_func, str):
-            self.act_funcs.append(self.activation_function(act_func))
+            function = self.activation_function(act_func)
+            self.act_funcs.append(function)
         else:
             raise TypeError("act_func argument must be of type str")
 
         #Making lists for holding the necessary vectors and matrices
         #Works OK, but not very "pretty"
-        self.biases.append(np.random.randn(n_neurons,1))
+        self.biases.append(np.random.randn(n_neurons)*0.01)
         self.A.append(0)
         self.Z.append(0)
         self.delta.append(0)
-        self.delta2.append(0)
 
     def activation_function(self, act):
         """
         NOT DOC STRING. 
         Note to self:
-        Not sure I'm happy with this method.
+        Not happy with this method.
         """
 
         if act == "sigmoid":
-            activ = lambda x: 1/(1+np.exp(-x))
+            def activ(x):
+                return 1/(1+np.exp(-x))
 
         elif act == "RELU":
-            activ = lambda x: np.maximum(x, 0)
+            def activ(x):
+                return np.maximum(x, 0)
 
-        elif act == "leaky_RELU":                
-            activ = lambda x: np.maximum(x, 0.01 * x)
+        elif act == "leaky_RELU": 
+            def activ(x):
+                return np.maximum(x, 0.01 * x)               
 
         elif act == "softmax":
+            def activ(x):
+                return np.exp(x)/np.sum(np.exp(x))
 
-            activ = lambda x: np.exp(x)/np.sum(np.exp(x), axis = 1, keepdims = True) 
-
-        #Actual name?
-        elif act == "no":
-            activ = lambda x: x
+        elif act == "linear":
+            def activ(x):
+                return x
         
-        #Need another solution to this? Also: bad formatting
+        #Yes, formatting
         else:
             print("-----------------------------------")
             print(" ")
@@ -92,154 +90,145 @@ class Neuralnet:
 
             return
         
-        return activ
+        return activ     
 
     def loss_function(self, loss):
-        """Under developement. Will be adding several loss functions."""
+        """Under developement. Will be adding more loss functions."""
 
         if isinstance(loss, str):
             if loss == "MSE":
-                func = lambda x, y: np.mean((x - y)**2, axis = 1, keepdims = True)
-                return func
-            elif loss == "diff":
-                func = lambda x, y: x - y
-                return func
+                def func(x, y):
+                    return np.mean((x - y)**2, axis = 1, keepdims = True)
+                
+            elif loss == "categorical_cross":
+                def func(x, y):
+                    return -np.sum(y*np.log(x), axis = 1)
+                
             else:
                 raise ValueError("Invalid loss function name")
+                
         else:
-            raise TypeError("Loss function argument must be of type str")        
-
+            raise TypeError("Loss function argument must be of type str")  
+            
+        return func
+        
     def feed_forward(self, X):
         
-        if np.shape(X) == (32,6):
-            print(np.shape(X))
-            print(np.shape(self.weights[0]))
-
+        #Feeding in feature matrix
         self.Z[0] = X @ self.weights[0] + self.biases[0].T
+        #Activation in first hidden layer
         self.A[0] = self.act_funcs[0](self.Z[0])
 
         for i in range(1, len(self.weights)):
-
+            #Feeding forward
             self.Z[i] = self.A[i-1] @ self.weights[i] + self.biases[i].T
             self.A[i] = self.act_funcs[i](self.Z[i])
 
-        
+    def diff(self, C, A):
+        """
+        Not sure this method is of any real use
+        """
+        dCda = egrad(C)
+        dAdz = jacobian(A)
 
-        return self.A[-1]
+        return dCda, dAdz
 
-    def back_prop(self, y, loss):
-
-            #Will make a method for this soon, allowing for more than one output neuron
-            loss_function = self.loss_function(loss)
-            #Next line holds a function for later use
-            #cross = lambda x, y: -np.sum(y*np.log(x))
-            #final layer
-            #Taking the derivative of the activation function
-            dfdz = egrad(self.act_funcs[-1])
-            #Taking the derivative of the loss function w.r.t. to argument "x"
-            dcda = egrad(loss_function, 0)
-
-            #Hadamar product of f'(z^L) and dC/da^L
-            self.delta[-1] = np.multiply(dfdz(self.Z[-1]), dcda(self.A[-1], y))
-            #Differentiating the loss function w.r.t. to the output value
-            dcdb = egrad(loss_function, 0)
-            #Differentiation the loss function w.r.t. to the bias
-
-            delta_Lj2 = dcda(self.biases[-1].T, y)
-            self.delta2[-1] = delta_Lj2
-
-    
+    def back_prop(self, y, diff):
+            
+            #Assigning Jacobian and derivative functions as variables
+            dC, da = diff
+            #"Empty" (Zeros) array to hold Jacobian
+            d_act = np.zeros(len(self.Z[-1]))
+            #Empty array to hold derivative of cost function
+            dcda = d_act.copy()
+            #Empty array to hold delta^L
+            self.delta[-1] = np.zeros((len(self.Z[-1]), self.layers[-1]))
+            for i in range(len(self.Z[-1])):
+                #Calculate Jacobian and derivative for each training example in batch. Unnecessary if batchsize = 1
+                d_act = da(self.Z[-1][i])
+                dcda = dC(self.A[-1][i], y)
+                #Jacobian of activation times derivative of cost function (Hadamard product)
+                self.delta[-1][i] = d_act @ dcda
+            
             for i in range(len(self.weights)-2, -1, -1):
+                #Gradient of activation function of hidden layer i. No need for Jacobian here
                 dfdz = egrad(self.act_funcs[i])
-                dcda = egrad(loss_function, 0)
+                #Equation 2 is calculated in 2 parts. Just for ease of reading
                 t1 =  self.delta[i+1] @ self.weights[i+1].T
                 self.delta[i] = np.multiply(t1, dfdz(self.Z[i]))
-                # Quick and dirty fix for an issue where dcda(self.biases[i].T, y) does not broadcast
-                #Does not always work (why?)
-                try:
-                    self.delta2[i] = dcda(self.biases[i].T, y)
-                except ValueError:
-                    self.delta2[i] = dcda(self.biases[i], y)
-            
+      
     def optimizer(self, X, eta):
-        """For the moment only supports mini-batch SGD. The mini-batch part is supplied by the train method. 
-        Other optimizers comping soon.
-        Requires argument eta as learning rate (learning rate feature is currently under development). 
+        """
+        For the moment only supports mini-batch SGD. More will come (maybe)
         """
 
         self.weights[0] -= eta * (X.T @ self.delta[0])
-        try:
-            self.biases[0] -= eta * self.delta2[0].T
-        except ValueError:
-            self.biases[0] -= eta * self.delta2[0]
-
+        self.biases[0] -= eta * np.sum(self.delta[0], axis = 0)
 
         for i in range(1, len(self.weights)):
             self.weights[i] -= eta * (self.A[i-1].T @ self.delta[i])
-            try:
-                self.biases[i] -= eta * self.delta2[i].T
-            except ValueError:
-                self.biases[i] -= eta * self.delta2[i]
+            self.biases[i] -= eta * np.sum(self.delta[i], axis = 0)
 
-    def train(self, X, y, epochs, loss):
+    def train(self, X, y, epochs, loss, metric, batch_size = 10, num_iters = 100, eta_init = 10**(-4), decay = 0.1):
 
         """
-        Takes input X (feature matrix), y (targets), and epochs (type int).
-        This method is currently being improved. Decreasing learning rate is currently being worked on.
-        This (learning rate), and mini-batch implementation will be improved and made optional. Other improvements
-        are also on the way. 
+        Takes args: X (feature matrix), y (targets), and epochs (type int).
+        Takes kwargs: batch_size, num_iters, eta_init, decay. The "standard" values provided by the method
+        has been found by testing on one dataset. You should probably not use the values I´ve found
         """
-
-        for i in range(len(self.weights)):
-            print(np.shape(self.biases[i]))
         
-        try:
-            X @ self.weights[0]
-        except ValueError:
-            print("Input size "+str(len(self.weights[0])) +" and X-shape "+str(np.shape(X))+" are not compatible")
-            return
-
+        diff = self.diff(self.loss_function(loss), self.act_funcs[-1])
+        
         data_indices = len(X)
-        batch_size = 30
-        num_iters = 400
-
+        #eta function (not the Dirichlet one): for decreasing learning rate as training progresses
         eta = lambda eta_init, iteration, decay: eta_init/(1+decay*iteration) 
-        eta_init = 10**(-2)
-        decay = 0.05
 
         for i in range(1, epochs+1):
-            eta1 = eta(eta_init, i, decay)
+            
             for j in range(num_iters):
-
+                eta1 = eta(eta_init, j, decay)
+                #Randomly choose datapoints to use as mini-batches
                 chosen_datapoints = np.random.choice(data_indices, size = batch_size, replace = True)
+                #Making mini-batches
                 X_mini = X[chosen_datapoints]
-
                 y_mini = y[chosen_datapoints]
+                #Feed forward
                 self.feed_forward(X_mini)
-                self.back_prop(y_mini, loss)
-                self.optimizer(X_mini, eta1)
-            predicted = self.pred(X_mini)
-            acc = self.metric(predicted, y_mini, "accuracy")
-            print(acc)
+                #Backprop
+                self.back_prop(y_mini, diff)
+                #Update weights and biases
+                self.optimizer(X_mini, eta(eta_init, j, decay))
+                
+            #Make a prediction and print mean of performance of mini-batch 
+            predicted = self.predict(X_mini)
+            performance = self.metrics(predicted, y_mini, metric)
+            print(metric +" is " + str(np.mean(performance))+ " at epcoh " +str(i))
 
-        
-    def metric(self, y_hat, y, a):
 
+    def metrics(self, y_hat, y, a):
+        """
+        Takes args: y_hat, y, a (prediction, targets, activation in layer L)
+        """
         if a == "accuracy":
+            s = 0
             for i in range(len(y)):
                 true = np.argmax(y[i])
                 pred = np.argmax(y_hat[i])
-                s = 0
-
                 if true == pred:
                     s += 1
                 else:
                     continue
+
             return s/len(y_hat)
 
-    def pred(self, X):
+        elif a == "MSE":
+            return np.mean((y-y_hat)**2, axis = 0)
+
+
+    def predict(self, X):
         """
-        Returns the values from the output neuron
+        Takes arg: X
+        Does one feed forward pass and returns the output of last layer
         """
         self.feed_forward(X)
         return self.A[-1]
