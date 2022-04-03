@@ -6,17 +6,16 @@ from autograd import elementwise_grad as egrad
 class NeuralNet:
 
     def __init__(self):
-        
         #Lists for holding the weight, bias, etc, matrices/ vectors.
         #Call them (for the time being) "empty" tensors, if you're so inclined
         self.layers = []
         self.act_funcs = [] 
-        self.d_act_funcs = []
         self.weights = []
         self.biases = []
         self.Z = []
         self.A = []
         self.delta = []
+        
     def add(self, n_neurons, act_func, input_size = None):
         """
         Sequantially adds layer to network in the order (in, hidden_1, ..., hidden_n, out). When adding input layer,
@@ -55,8 +54,6 @@ class NeuralNet:
 
     def activation_function(self, act):
         """
-        NOT DOC STRING. 
-        Note to self:
         Not happy with this method.
         """
 
@@ -93,16 +90,16 @@ class NeuralNet:
         return activ     
 
     def loss_function(self, loss):
-        """Under developement. Will be adding more loss functions."""
+        """Meh"""
 
         if isinstance(loss, str):
             if loss == "MSE":
                 def func(x, y):
-                    return np.mean((x - y)**2, axis = 1, keepdims = True)
+                    return np.mean((x - y)**2, axis = 0, keepdims = True)
                 
             elif loss == "categorical_cross":
                 def func(x, y):
-                    return -np.sum(y*np.log(x), axis = 1)
+                    return -np.sum(y*np.log(x), axis = 0)
                 
             else:
                 raise ValueError("Invalid loss function name")
@@ -135,7 +132,7 @@ class NeuralNet:
 
     def back_prop(self, y, diff):
             
-            #Assigning Jacobian and derivative functions as variables
+            #Assigning Jacobian and gradient functions as variables
             dC, da = diff
             #"Empty" (Zeros) array to hold Jacobian
             d_act = np.zeros(len(self.Z[-1]))
@@ -144,9 +141,9 @@ class NeuralNet:
             #Empty array to hold delta^L
             self.delta[-1] = np.zeros((len(self.Z[-1]), self.layers[-1]))
             for i in range(len(self.Z[-1])):
-                #Calculate Jacobian and derivative for each training example in batch. Unnecessary if batchsize = 1
+                #Calculate Jacobian and derivative for each training example in batch
                 d_act = da(self.Z[-1][i])
-                dcda = dC(self.A[-1][i], y)
+                dcda = dC(self.A[-1][i], y[i])
                 #Jacobian of activation times derivative of cost function (Hadamard product)
                 self.delta[-1][i] = d_act @ dcda
             
@@ -174,7 +171,8 @@ class NeuralNet:
         """
         Takes args: X (feature matrix), y (targets), and epochs (type int).
         Takes kwargs: batch_size, num_iters, eta_init, decay. The "standard" values provided by the method
-        has been found by testing on one dataset. You should probably not use the values I´ve found
+        has been found by testing on one dataset. You should probably not use the values I´ve found. Or this class,
+        come to think of it
         """
         
         diff = self.diff(self.loss_function(loss), self.act_funcs[-1])
@@ -188,7 +186,7 @@ class NeuralNet:
             for j in range(num_iters):
                 eta1 = eta(eta_init, j, decay)
                 #Randomly choose datapoints to use as mini-batches
-                chosen_datapoints = np.random.choice(data_indices, size = batch_size, replace = True)
+                chosen_datapoints = np.random.choice(data_indices, size = batch_size, replace = False)
                 #Making mini-batches
                 X_mini = X[chosen_datapoints]
                 y_mini = y[chosen_datapoints]
@@ -199,11 +197,11 @@ class NeuralNet:
                 #Update weights and biases
                 self.optimizer(X_mini, eta(eta_init, j, decay))
                 
-            #Make a prediction and print mean of performance of mini-batch 
+            #Make a prediction and print mean of performance and loss of mini-batch 
             predicted = self.predict(X_mini)
-            performance = self.metrics(predicted, y_mini, metric)
-            print(metric +" is " + str(np.mean(performance))+ " at epcoh " +str(i))
-
+            metric_val = np.mean(self.metrics(predicted, y_mini, metric))
+            loss_val = np.mean(self.loss_function(loss)(predicted, y_mini))
+            print("mean loss = " + str(loss_val) +" -------------- " + metric + " = " + str(metric_val) + " at epoch " +str(i))
 
     def metrics(self, y_hat, y, a):
         """
