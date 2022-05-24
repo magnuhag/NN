@@ -6,4 +6,4 @@ The neural net found here is not complete, but it is currently functional.
 
 At the time the network uses Autograd to compute gradients and Jacobians to perform backpropagation. This comes at a significant computational cost, but spares us taking derivatives of cost functions and activation functions our selves. 
 
-I´ve included three files in this repo (in addition to this README). The first one NN_ninja.py is just the code for the network. The two others are .ipynb and .pdf files of a Jupyter Notebook I wrote to mathematically explain what is going on in NN_ninja.py. The .pdf version has some trouble loading in certain browsers, but Chrome seems to work fine.
+I´ve included two files in this repo (in addition to this README). The first one NN_ninja.py is just the code for the network. The other file is a Jupyter Notebook I wrote to mathematically explain what is going on in NN_ninja.py. 
