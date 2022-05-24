@@ -8,4 +8,4 @@ At the time the network uses Autograd to compute gradients and Jacobians to perf
 
 I´ve included two files in this repo (in addition to this README). The first one NN_ninja.py is just the code for the network. The other file is a Jupyter Notebook I wrote to mathematically explain what is going on in NN_ninja.py. 
 
-There is also a small comaparison between this neural network and one written using Tensorflow. The outcome of the comparison will not surprise you.
+There is also a small comparison between this neural network and one written using Tensorflow. The outcome of the comparison will not surprise you.
