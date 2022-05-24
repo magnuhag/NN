@@ -30,12 +30,12 @@ class NeuralNet:
             raise TypeError("n_neurons must be of type int and greater than or equal to 1")
 
         if isinstance(input_size, int):
+            #I haven't really discussed initialization of weights and biases. Upsies
             self.weights.append(np.random.randn(input_size, n_neurons)*0.01)
             
-
         elif isinstance(input_size, type(None)):
             self.weights.append(np.random.randn(self.layers[-2], n_neurons)*0.01)
-        #Errrrr
+        #Errrrr, I'll get back to this
         else:
             raise TypeError("Errr")
 
@@ -45,16 +45,19 @@ class NeuralNet:
         else:
             raise TypeError("act_func argument must be of type str")
 
-        #Making lists for holding the necessary vectors and matrices
-        #Works OK, but not very "pretty"
         self.biases.append(np.random.randn(n_neurons)*0.01)
+        
+        #For each added layer we append 0 to the lists
+        #so that they get the appropriate length
         self.A.append(0)
         self.Z.append(0)
         self.delta.append(0)
 
     def activation_function(self, act):
         """
-        Not happy with this method.
+        Currently available activation functions:
+        "simgoid", "RELU", "leaky_REALU", "softmax", and "linear"
+        
         """
 
         if act == "sigmoid":
@@ -90,20 +93,18 @@ class NeuralNet:
         return activ     
 
     def loss_function(self, loss):
-        """Meh"""
+        """Currently available loss functions:
+        "MSE", and "categorical_cross"""
 
         if isinstance(loss, str):
             if loss == "MSE":
                 def func(x, y):
-                    return np.mean((x - y)**2, axis = 0, keepdims = True)
-                
+                    return np.mean((x - y)**2, axis = 0, keepdims = True)               
             elif loss == "categorical_cross":
                 def func(x, y):
                     return -np.sum(y*np.log(x), axis = 0)
-                
             else:
-                raise ValueError("Invalid loss function name")
-                
+                raise ValueError("Invalid loss function name")                
         else:
             raise TypeError("Loss function argument must be of type str")  
             
@@ -122,9 +123,7 @@ class NeuralNet:
             self.A[i] = self.act_funcs[i](self.Z[i])
 
     def diff(self, C, A):
-        """
-        Not sure this method is of any real use
-        """
+     
         dCda = egrad(C)
         dAdz = jacobian(A)
 
@@ -144,7 +143,7 @@ class NeuralNet:
                 #Calculate Jacobian and derivative for each training example in batch
                 d_act = da(self.Z[-1][i])
                 dcda = dC(self.A[-1][i], y[i])
-                #Jacobian of activation times derivative of cost function (Hadamard product)
+                #Jacobian of activation times derivative of cost function
                 self.delta[-1][i] = d_act @ dcda
             
             for i in range(len(self.weights)-2, -1, -1):
@@ -169,10 +168,9 @@ class NeuralNet:
     def train(self, X, y, epochs, loss, metric, batch_size = 10, num_iters = 100, eta_init = 10**(-4), decay = 0.1):
 
         """
-        Takes args: X (feature matrix), y (targets), and epochs (type int).
-        Takes kwargs: batch_size, num_iters, eta_init, decay. The "standard" values provided by the method
-        has been found by testing on one dataset. You should probably not use the values I´ve found. Or this class,
-        come to think of it
+        args: X (feature matrix), y (targets), and epochs (type int).
+        kwargs: batch_size, num_iters, eta_init, decay. The "standard" values provided by the method
+        has been found by testing on one dataset. You should probably not use the values I´ve found.
         """
         
         diff = self.diff(self.loss_function(loss), self.act_funcs[-1])
@@ -182,7 +180,6 @@ class NeuralNet:
         eta = lambda eta_init, iteration, decay: eta_init/(1+decay*iteration) 
 
         for i in range(1, epochs+1):
-            
             for j in range(num_iters):
                 eta1 = eta(eta_init, j, decay)
                 #Randomly choose datapoints to use as mini-batches
@@ -201,11 +198,14 @@ class NeuralNet:
             predicted = self.predict(X_mini)
             metric_val = np.mean(self.metrics(predicted, y_mini, metric))
             loss_val = np.mean(self.loss_function(loss)(predicted, y_mini))
+            #Yes, formatting 
             print("mean loss = " + str(loss_val) +" -------------- " + metric + " = " + str(metric_val) + " at epoch " +str(i))
 
     def metrics(self, y_hat, y, a):
         """
         Takes args: y_hat, y, a (prediction, targets, activation in layer L)
+        Currently available metrics:
+        "accuracy", and "MSE"
         """
         if a == "accuracy":
             s = 0
