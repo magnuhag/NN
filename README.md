@@ -1,4 +1,4 @@
-# Hobby project: building a neural network 
+# Building a neural network 
 
 I wrote a neural network as an assignment/ project whilst doing my degree in physics at the University of Oslo.
 I've recently found time to improve upon the original architecture and design of the network, and this is currently what's happening in this repo.
