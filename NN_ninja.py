@@ -61,19 +61,19 @@ class NeuralNet:
         """
 
         if act == "sigmoid":
-            lambda x: 1/(1+np.exp(-x))
+            activ = lambda x: 1/(1+np.exp(-x))
 
         elif act == "RELU":
-            lambda x: np.maximum(x, 0)
+            activ = lambda x: np.maximum(x, 0)
 
         elif act == "leaky_RELU":
-            lambda x: np.maximum(x, 0.01 * x)
+            activ = lambda x: np.maximum(x, 0.01 * x)
 
         elif act == "softmax":
-            lambda x: np.exp(x)/np.sum(np.exp(x))
+            activ = lambda x: np.exp(x)/np.sum(np.exp(x))
 
         elif act == "linear":
-            lambda x: x
+            activ = lambda x: x
 
         #Yes, formatting
         else:
@@ -93,9 +93,9 @@ class NeuralNet:
 
         if isinstance(loss, str):
             if loss == "MSE":
-                lambda x, y: np.mean((x - y)**2, axis = 0, keepdims = True)
+                func = lambda x, y: np.mean((x - y)**2, axis = 0, keepdims = True)
             elif loss == "categorical_cross":
-                lambda x,y: -np.sum(y*np.log(x), axis = 0)
+                func = lambda x,y: -np.sum(y*np.log(x), axis = 0)
             else:
                 raise ValueError("Invalid loss function name")
         else:
